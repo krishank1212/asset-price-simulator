@@ -1,26 +1,56 @@
 # About the project
-As my interest in quantitative finance begins to develop, I wanted to implement some of the maths that's important in the role of finance. One of the pivotal equations is the Black-Scholes equation. This program compares Monte Carlo simulations of a European call option price under Geometric Brownian Motion (GBM), and compares the asset price with the theoretical price that is produced from the Black-Scholes equation. It also demonstrates how the Monte Carlo method converges to the theoretical value as the number of paths increases.
+This project implements and analyses Monte Carlo pricing of a European call option under the Black–Scholes framework, with the underlying asset modelled as a Geometric Brownian Motion (GBM). The primary aim was not just to obtain an option price, but to study convergence behaviour and variance reduction techniques, and to compare empirical Monte Carlo estimates with the closed-form Black–Scholes solution.
 
+In particular, I investigate how the Monte Carlo estimator converges to the analytical price as the number of simulated paths increases, and how variance reduction techniques improve efficiency for a fixed computational budget.
 # How it's made
-The project is made entirely in Python, and is my first experience using the modules `numpy` and `scipy`. I also used `matplotlib` to plot the results to visually compare how the Monte Carlo simulations converge to the theoretical value. The maths works as follows:
+## Mathematical Model
 
-- I produced small time increments by dividing the time horizon by the number of time steps.
-- Using the Z distribution, I generated random sized increments, and multiplied these by the square root of the small time increments.
-- Since we assume that the increments have a lognormal distribution, I applied the GBM formula to calculate the increments.
-- I then summed these to find the logarithm of the cumulative sum.
-- This is then exponentiated and multiplied by the initial stock price to find the final value.
-- This completed over all the desired number of paths.
-- The Monte Carlo simulator uses this GBM simulation to calculate the payoff of each path at maturity.
-- The average payoff is discounted back to the present value.
-- The Black-Scholes equation then uses the same parameters to find the theoretical value of the stock.
-- Using varying number of paths, I observed how the absolute error between the Monte Carlo values and Black-Scholes value changed, and plotted this.
+Under the Black–Scholes assumptions, the asset price S_t follows the stochastic differential equation
+
+$dS_t = \mu S_t \ dt + \sigma S_t \, dW_t$,
+
+where $\mu$ is the drift, $\sigma$ the volatility, and $W_t$ a standard Brownian motion.
+
+Discretising this SDE over small time steps $\Delta t$, the terminal asset price is simulated using
+
+$S_T = S_0 \exp\left( \left(\mu - \tfrac{1}{2}\sigma^2\right)T + \sigma \sqrt{T} Z \right),
+\quad Z \sim \mathcal{N}(0,1)$.
+
+For each simulated path, the payoff of a European call option is computed as
+
+$\max(S_T - K, 0)$,
+
+and the Monte Carlo price is obtained by discounting the average payoff under the risk-neutral measure.
+
+The analytical Black–Scholes price is computed using the same parameters, allowing a direct comparison between simulated and theoretical values.
+
+## Implementation
+The project is implemented in Python, using:
+- `NumPy` for vectorised simulation of paths,
+- `SciPy` for evaluating the Black–Scholes formula,
+- `Matplotlib` for visualising convergence and error behaviour.
+
+To study convergence, I varied the number of Monte Carlo paths and plotted the absolute pricing error against the theoretical Black–Scholes value, observing the expected $O(N^{-1/2})$ convergence rate for the naïve estimator.
 
 # Optimisations
-The key factor that drives the error between the Monte Carlo and Black-Scholes prices, for any number of paths, is the variance of the Monte Carlo method. I employed different strategies to reduce the variance.
+A key limitation of standard Monte Carlo pricing is its high variance. I implemented two classical variance reduction methods to improve estimator efficiency.
 ## Antithetic Variates
-Antithetic variates use the symmetry in the normal distribution to reduce the variance. For every value Z I drew, I also drew -Z, and thus, only have to draw half the number of increments. By pairing samples, I introduce negative correlation into the sample and reduce the variance.
+Antithetic variates use the symmetry in the normal distribution to reduce the variance. For every value $\quad Z \sim \mathcal{N}(0,1)$ I drew, I also drew $-Z$, and thus, only have to draw half the number of increments. By pairing samples, I introduce negative correlation into the sample and reduce the variance.
 ## Control Variates
-Control variates reduce the variance in the Monte Carlo simulation by subtracting a correlated random variable whose true average is already known. I implemented a random variable Y whose PDF is complex but has a known expectation and is strongly correlated with the option payoff. This means that if my option pay off is unusually high, so is Y, and same logic if the option payoff is unusually low.  This makes the difference between the option payoff and Y more stable, which can be exploited to more easily calculate the expected payoff. A multiplicative constant, beta, is introduced to ensure that the payoff and Y fluctuate by the same amount.
+I also implemented a control variate based on a strongly correlated random variable with known expectation. Specifically, I used the terminal asset price $S_T$, whose expected value under the risk-neutral measure is known analytically.
+
+The adjusted estimator takes the form
+
+$\hat{V}_{CV} = \hat{V} - \beta(\hat{Y} - \mathbb{E}[Y]),$
+
+where $\beta$ is chosen to minimise variance. Empirically, this significantly reduced estimator variance compared to both the naïve and antithetic estimators.
+# Results and limitations
+The variance reduction techniques substantially improved convergence speed, allowing accurate pricing with far fewer simulated paths. However, the model relies on strong assumptions — constant volatility, lognormal returns, frictionless markets — which are violated in real financial data.
 
 # Lessons I learnt
-This project has given me a much deeper insight into not just the mathematics by which the stock market operates, but also an understanding of how computational power can be used to simulate and predict such conclusions. I've also greatly improved my `numpy` skills as a result, and look forward to learning other important mathematical modules in Python and other languages.
+This project deepened my understanding of:
+- stochastic modelling of asset prices,
+- Monte Carlo convergence and variance reduction,
+- the relationship between analytical finance models and numerical methods.
+
+It also highlighted the importance of validating simulations against known results, and of understanding model assumptions rather than treating formulas as black boxes.
