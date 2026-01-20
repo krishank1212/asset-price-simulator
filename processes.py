@@ -13,12 +13,8 @@ def simulate_gbm(S0, r, sigma, T, Z):
         Volatility
     T : float
         Time horizon (years)
-    n_steps : int
-        Number of time steps
-    n_paths : int
-        Number of simulated paths
-    seed : int or None
-        Random seed for reproducibility
+    Z : np.ndarray
+        array of values from the standard normal distribution
 
     Returns
     -------

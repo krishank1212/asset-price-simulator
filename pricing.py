@@ -27,8 +27,10 @@ def monte_carlo(S0, K, r, sigma, T, n_steps, n_paths, seed=None):
 
     Returns
     -------
-    X : float
-        Estimated option price
+    control variate estimator : function
+        calls a function that uses X, Y and 
+        the known expectation of Y to estimate 
+        the option price
     """
     Z = antithetic_normals(n_paths, n_steps)
     S = simulate_gbm(S0, r, sigma, T, Z)
