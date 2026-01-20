@@ -75,6 +75,7 @@ This translated into substantially faster convergence for a fixed number of path
 |20000|0.0792|0.0454|0.0565|
 |50000|0.0520|0.0360|0.0321|
 |100000|0.0415|0.0285|0.0263|
+Note: for 20000 paths, notice that the control variate fails to beat the antithetic variate. This could be because of random variance in the sample, or because $\beta$ wasn't optimal for this particular run, but the overall trend is clear.
 
 ## Absolute error vs number of paths
 
