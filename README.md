@@ -5,7 +5,7 @@ In particular, I investigate how the Monte Carlo estimator converges to the anal
 # How it's made
 ## Mathematical Model
 
-Under the Black–Scholes assumptions, the asset price S_t follows the stochastic differential equation
+Under the Black–Scholes assumptions, the asset price $S_t$ follows the stochastic differential equation
 
 $dS_t = \mu S_t \ dt + \sigma S_t \, dW_t$,
 
