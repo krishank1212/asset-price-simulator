@@ -1,94 +1,178 @@
-# About the project
-This project implements and analyses Monte Carlo pricing of a European call option under the Black–Scholes framework, with the underlying asset modelled as a Geometric Brownian Motion (GBM). The primary aim was not just to obtain an option price, but to study convergence behaviour and variance reduction techniques, and to compare empirical Monte Carlo estimates with the closed-form Black–Scholes solution.
+# Black–Scholes Toolkit
 
-In particular, I investigate how the Monte Carlo estimator converges to the analytical price as the number of simulated paths increases, and how variance reduction techniques improve efficiency for a fixed computational budget.
-# How it's made
+This project implements and analyses Monte Carlo pricing of a European call option under the Black–Scholes framework, extended with a full analytical and numerical Greeks module and an interactive Streamlit dashboard.
+
+The primary aim was not to obtain option prices mechanically, but to study convergence behaviour, variance reduction techniques, and the relationship between a closed-form model and its numerical derivatives: understanding the machinery underneath rather than treating formulas as black boxes.
+
+---
+
+# Part I: Monte Carlo Pricing
+
 ## Mathematical Model
 
 Under the Black–Scholes assumptions, the asset price $S_t$ follows the stochastic differential equation
 
-$dS_t = \mu S_t \ dt + \sigma S_t \, dW_t$,
+$$dS_t = \mu S_t \, dt + \sigma S_t \, dW_t,$$
 
 where $\mu$ is the drift, $\sigma$ the volatility, and $W_t$ a standard Brownian motion.
 
 Discretising this SDE over small time steps $\Delta t$, the terminal asset price is simulated using
 
-$S_T = S_0 \exp\left( \left(\mu - \tfrac{1}{2}\sigma^2\right)T + \sigma \sqrt{T} Z \right),
-\quad Z \sim \mathcal{N}(0,1)$.
+$$S_T = S_0 \exp\!\left(\left(\mu - \tfrac{1}{2}\sigma^2\right)T + \sigma\sqrt{T}\, Z\right), \quad Z \sim \mathcal{N}(0,1).$$
 
-For each simulated path, the payoff of a European call option is computed as
+For each simulated path, the payoff of a European call option is
 
-$\max(S_T - K, 0)$,
+$$\max(S_T - K,\, 0),$$
 
-and the Monte Carlo price is obtained by discounting the average payoff under the risk-neutral measure.
-
-The analytical Black–Scholes price is computed using the same parameters, allowing a direct comparison between simulated and theoretical values.
+and the Monte Carlo price is obtained by discounting the average payoff under the risk-neutral measure. The analytical Black–Scholes price serves as a ground truth for direct comparison.
 
 ## Implementation
-The project is implemented in Python, using:
+
+The project is implemented in Python using:
 - `NumPy` for vectorised simulation of paths,
-- `SciPy` for evaluating the Black–Scholes formula,
+- `SciPy` for evaluating the Black–Scholes formula and normal CDF,
 - `Matplotlib` for visualising convergence and error behaviour.
 
-To study convergence, I varied the number of Monte Carlo paths and plotted the absolute pricing error against the theoretical Black–Scholes value, observing the expected $O(N^{-1/2})$ convergence rate for the naïve estimator.
+To study convergence, the number of Monte Carlo paths was varied and absolute pricing error plotted against the analytical value, confirming the expected $O(N^{-1/2})$ convergence rate for the naïve estimator.
 
-# Optimisations
-A key limitation of standard Monte Carlo pricing is its high variance. I implemented two classical variance reduction methods to improve estimator efficiency.
-## Antithetic Variates
-Antithetic variates use the symmetry in the normal distribution to reduce the variance. For every value $\quad Z \sim \mathcal{N}(0,1)$ I drew, I also drew $-Z$, and thus, only have to draw half the number of increments. By pairing samples, I introduce negative correlation into the sample and reduce the variance.
-## Control Variates
-I also implemented a control variate based on a strongly correlated random variable with known expectation. Specifically, I used the terminal asset price $S_T$, whose expected value under the risk-neutral measure is known analytically.
+## Variance Reduction
+
+A key limitation of standard Monte Carlo is high variance. Two classical variance reduction methods were implemented to improve estimator efficiency for a fixed computational budget.
+
+### Antithetic Variates
+
+Antithetic variates exploit the symmetry of the normal distribution. For every draw $Z \sim \mathcal{N}(0,1)$, its negative $-Z$ is also used, halving the number of independent draws required. Pairing samples in this way introduces negative correlation into the estimator, reducing variance without increasing the number of simulated paths.
+
+### Control Variates
+
+A control variate based on the terminal asset price $S_T$ was implemented, exploiting the fact that its risk-neutral expectation is known analytically: $\mathbb{E}[e^{-rT} S_T] = S_0$.
 
 The adjusted estimator takes the form
 
-$\hat{V}_{CV} = \hat{V} - \beta(\hat{Y} - \mathbb{E}[Y]),$
+$$\hat{V}_{\text{CV}} = \hat{V} - \beta \left(\hat{Y} - \mathbb{E}[Y]\right),$$
 
-where $\beta$ is chosen to minimise variance. The optimal control variate was empirically estimated using sample moments. Empirically, this significantly reduced estimator variance compared to both the naïve and antithetic estimators.
-# Experimental Setup
-All simulations were performed with the following baseline parameters:
-- Initial price $S_0 = 100$
-- Strike $K = 100$
-- Risk-free rate $r = 0.03$
-- Volatility $\sigma  = 0.2$
-- Time to maturity $T = 1$
-- Number of time steps $n\textunderscore steps = 252$
-The Monte Carlo estimates were computed using paths of: $500, 1000, 2000, 5000, 10000, 20000, 50000, 100000$.
+where $\beta$ is chosen to minimise variance. The optimal $\beta$ is estimated empirically from sample covariance and variance of $X$ and $Y$.
 
-# Quantitatve Results
-Variance reduction was assessed by comparing the empirical absolute error of each estimator across repeated simulations. Relative to the naïve Monte Carlo simulator:
-- Antithetic variates reduced the absolute error by approximately 28%
-- Control variates reduced the absolute error by approximately 38%
+## Experimental Setup
 
-This translated into substantially faster convergence for a fixed number of paths
+All simulations were run with the following baseline parameters:
 
-# Visual evidence
+| Parameter | Value |
+|-----------|-------|
+| Initial price $S_0$ | 100 |
+| Strike $K$ | 100 |
+| Risk-free rate $r$ | 0.03 |
+| Volatility $\sigma$ | 0.2 |
+| Time to maturity $T$ | 1 year |
+| Time steps | 252 |
 
-## Absolute error vs variance reduction methods
+Path counts tested: 500, 1,000, 2,000, 5,000, 10,000, 20,000, 50,000, 100,000.
 
-|No. of paths|Naïve Monte Carlo|Antithetic|Control|
-|---|---|---|---|
-|500|0.5267|0.3900|0.3277|
-|1000|0.2828|0.2768|0.2135|
-|2000|0.2632|0.1598|0.1278|
-|5000|0.1615|0.1128|0.0849|
-|10000|0.1006|0.0752|0.0582|
-|20000|0.0792|0.0454|0.0565|
-|50000|0.0520|0.0360|0.0321|
-|100000|0.0415|0.0285|0.0263|
+## Quantitative Results
 
-Note: for 20000 paths, notice that the control variate fails to beat the antithetic variate. This could be because of random variance in the sample, or because $\beta$ wasn't optimal for this particular run, but the overall trend is clear.
+| Paths | Naïve MC | Antithetic | Control Variate |
+|-------|----------|------------|-----------------|
+| 500 | 0.5267 | 0.3900 | 0.3277 |
+| 1,000 | 0.2828 | 0.2768 | 0.2135 |
+| 2,000 | 0.2632 | 0.1598 | 0.1278 |
+| 5,000 | 0.1615 | 0.1128 | 0.0849 |
+| 10,000 | 0.1006 | 0.0752 | 0.0582 |
+| 20,000 | 0.0792 | 0.0454 | 0.0565 |
+| 50,000 | 0.0520 | 0.0360 | 0.0321 |
+| 100,000 | 0.0415 | 0.0285 | 0.0263 |
 
-## Absolute error vs number of paths
+Relative to the naïve estimator:
+- **Antithetic variates** reduced absolute error by approximately **28%**
+- **Control variates** reduced absolute error by approximately **38%**
 
-<img width="613" height="473" alt="image" src="https://github.com/user-attachments/assets/caee5f2b-316f-4ae7-9a6d-36596d28862c" />
+Note: at 20,000 paths the control variate marginally underperforms antithetic, likely due to sampling variance in the empirical $\beta$ estimate. The overall convergence trend is clear.
 
-# Results and limitations
-The variance reduction techniques substantially improved convergence speed, allowing accurate pricing with far fewer simulated paths. However, the model relies on strong assumptions — constant volatility, lognormal returns, frictionless markets — which are violated in real financial data.
+<img width="1226" height="946" alt="image" src="https://github.com/user-attachments/assets/304ce83f-b5cc-410f-a462-fe2f0ac3cc5b" />
 
-# Lessons I learnt
+---
+
+# Part II: Greeks
+
+## What Are the Greeks?
+
+The Greeks measure the sensitivity of an option's price to changes in its underlying parameters. They are the primary tools used by practitioners to understand and hedge option risk. Each Greek answers a specific question about how the option value $V$ moves as one input changes while the others are held fixed.
+
+## Analytical Definitions
+
+### Delta: $\Delta$
+
+$$\Delta = \frac{\partial V}{\partial S} = N(d_1),$$
+
+where $N(\cdot)$ is the standard normal CDF and
+
+$$d_1 = \frac{\ln(S_0/K) + (r + \frac{1}{2}\sigma^2)T}{\sigma\sqrt{T}}.$$
+
+Delta measures the rate of change of the option price with respect to the spot price. It lies in $[0,1]$ for a European call, approaching 1 deep in-the-money and 0 deep out-of-the-money. It also gives the hedge ratio: a delta-neutral portfolio holds $-\Delta$ units of the underlying per long option.
+
+### Gamma: $\Gamma$
+
+$$\Gamma = \frac{\partial^2 V}{\partial S^2} = \frac{N'(d_1)}{S_0 \sigma \sqrt{T}},$$
+
+where $N'(\cdot)$ is the standard normal PDF. Gamma measures the convexity of the option price with respect to spot, or equivalently, the rate of change of delta. It is largest near-the-money and peaks as expiry approaches, capturing the non-linearity that makes delta hedging imperfect over finite rebalancing intervals.
+
+### Vega: $\mathcal{V}$
+
+$$\mathcal{V} = \frac{\partial V}{\partial \sigma} = S_0 \sqrt{T}\, N'(d_1).$$
+
+Vega measures sensitivity to volatility. It is always positive for long options: higher volatility increases the probability of large moves in either direction, which benefits the call holder without increasing the downside beyond the premium paid.
+
+### Theta: $\Theta$
+
+$$\Theta = -\frac{\partial V}{\partial t}.$$
+
+Theta measures time decay: the rate at which the option loses value as time to maturity decreases, all else equal. It is typically negative for long calls: as expiry approaches, there is less time for a favourable move to occur. Near-the-money options exhibit the steepest time decay close to expiry.
+
+### Rho: $\rho$
+
+$$\rho = \frac{\partial V}{\partial r} = KT e^{-rT} N(d_2).$$
+
+Rho measures sensitivity to the risk-free rate. A higher rate reduces the present value of the strike payment, which increases call value. Rho is typically the least significant Greek for short-dated options but becomes more material at long maturities.
+
+## Numerical Implementation
+
+All Greeks except Delta are computed numerically using **central finite differences**:
+
+$$\frac{\partial V}{\partial x} \approx \frac{V(x+h) - V(x-h)}{2h}, \qquad \frac{\partial^2 V}{\partial x^2} \approx \frac{V(x+h) - 2V(x) + V(x-h)}{h^2}.$$
+
+Central differences achieve $O(h^2)$ accuracy compared to $O(h)$ for forward or backward differences, at the cost of two function evaluations per Greek instead of one. Step sizes are chosen to balance truncation error (large $h$) against floating-point cancellation error (small $h$):
+
+| Greek | Differentiated w.r.t. | Step size $h$ |
+|-------|----------------------|---------------|
+| Delta (numerical) | Spot price $S$ | 0.01 |
+| Gamma | Spot price $S$ | 0.01 |
+| Vega | Volatility $\sigma$ | 0.001 |
+| Theta | Time to maturity $T$ | $1/365$ |
+| Rho | Risk-free rate $r$ | 0.001 |
+
+Delta is also computed analytically via the closed-form $N(d_1)$ expression. Agreement between analytical and numerical Delta serves as a consistency check on the finite-difference implementation.
+
+## Dashboard
+
+An interactive Streamlit dashboard (`app.py`) allows real-time exploration of how the option price and Greeks change with each input parameter. Sliders control $S_0$, $K$, $r$, $\sigma$, and $T$; metric cards display the current Greeks; and five plots show each Greek as a continuous function of its natural variable, with a red vertical line marking the current parameter value.
+
+<img width="728" height="782" alt="image" src="https://github.com/user-attachments/assets/8a987c56-c4b1-4fb7-a441-1165abe885ab" />
+
+---
+
+# Results and Limitations
+
+The variance reduction techniques substantially improve Monte Carlo convergence speed. The Greeks module provides fast, accurate sensitivity measures that agree with the analytical values to four decimal places across all tested parameter combinations.
+
+However, the underlying model makes strong assumptions (constant volatility, lognormal returns, frictionless markets, continuous trading) which are violated in practice. In real markets, volatility is itself stochastic (motivating models such as Heston or SABR), and the volatility surface is not flat.
+
+---
+
+# Lessons Learnt
+
 This project deepened my understanding of:
-- stochastic modelling of asset prices,
-- Monte Carlo convergence and variance reduction,
-- the relationship between analytical finance models and numerical methods.
+- stochastic modelling of asset prices and SDE discretisation,
+- Monte Carlo convergence theory and variance reduction,
+- the relationship between closed-form financial models and their numerical derivatives,
+- finite-difference methods and the trade-off between accuracy and numerical stability.
 
-It also highlighted the importance of validating simulations against known results, and of understanding model assumptions rather than treating formulas as black boxes.
+It also reinforced the importance of validating simulations against known results, and of understanding model assumptions rather than treating formulas as black boxes.
