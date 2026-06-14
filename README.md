@@ -1,4 +1,4 @@
-# Black–Scholes Toolkit
+# Options Pricer with Greeks Dashboard
 
 This project implements and analyses Monte Carlo pricing of a European call option under the Black–Scholes framework, extended with a full analytical and numerical Greeks module and an interactive Streamlit dashboard.
 
